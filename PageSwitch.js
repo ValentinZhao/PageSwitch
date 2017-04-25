@@ -16,11 +16,26 @@
                 me.pageCount = me.pageCount();
                 me.index = (me.settings.index > 0 && me.settings.index < me.pageCount) ? me.settings.index : 0;
                 me.canScroll = true; //现在才为PageSwitch添加的新属性，主要用来阻止画面切换动画播放时用户的其他动作，比如向下切换时用户向上滚动这时若canScroll为false则不会打断当前动画
+                if (!me.direction || me.index) {
+                    me._initLayout();
+                }
+                if (me.settings.pagination) {
+                    me._initPaging();
+                }
             },
 
             pageCount: function() {
 
             },
+
+            _initLayout: function() {
+
+            },
+
+            _initPaging: function() {
+
+            }
+
 
         }
     })();
