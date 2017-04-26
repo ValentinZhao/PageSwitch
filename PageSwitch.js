@@ -64,14 +64,50 @@
                     me.sections.width(width);
                     me.section.width(cellWidth).css("float", "left");
                 }
+                if (me.index) {
+                    me._scrollPage(true);
+                }
             },
 
             _initPaging: function() {
-
+                var me = this,
+                    pagesClass = me.selector.pagesClass.substring(1); //去掉选择器前面的点
+                me.activeClass = me.selector.activeClass.substring(1);
+                var pagesHtml = "<ul class=" + pagesClass + ">";
+                for (let i = 0; i < me.pageCount; i++) {
+                    pagesHtml += "<li></li>";
+                }
+                me.element.append(pagesHtml);
+                var pages = me.element.find(me.selector.page);
+                me.pageItem = pages.find("li");
+                me.pageItem.eq(me.index).addClass(me.activeClass);
+                if (me.direction) {
+                    pages.addClass("vertical");
+                } else {
+                    pages.addClass("horizontal");
+                }
             },
 
             _initEvent: function() {
+                /**绑定鼠标事件 */
+                var me = this;
+                me.element.on("mousewheel DOMMouseScroll", function(e) {
+                    e.preventDefault(); //取消可以被取消的事件，这里是防止用户快速滚动鼠标滚轮造成页面快速切换————接收到一个滚轮事件后，我们总是要用户等待切换完成后才能再次切换
+                    var delta = e.originalEvent.wheelDelta || -e.originalEvent.detail;
+                    if (me.canScroll) {
+                        if (delta > 0 && (me.index && !me.settings.loop || me.settings.loop)) {
+                            me.prev();
+                        } else if (delta < 0 && (me.index < (me.pageCount - 1) && !me.settings.loop || me.settings.loop)) {
+                            me.next();
+                        }
+                    }
+                });
 
+                /**绑定indicator的点击事件 */
+                me.element.on("click", me.selector.page + ' li', function() {
+                    me.index = $(this).index;
+                    me._scrollPage();
+                })
             },
 
             _scrollPage: function() {
