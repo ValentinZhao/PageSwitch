@@ -1,4 +1,17 @@
 (function($) {
+    "use strict"
+
+    var _prefix = (function(temp) {
+        var mPrefix = ["webkit", "Moz", "o", "ms"],
+            prop = "";
+        for (var i in mPrefix) { //for..in遍历键；for..of遍历value，类似Java中的for each
+            prop = mPrefix[i] + "Transition";
+            if (temp.style[prop] != undefined) {
+                return '-' + mPrefix[i].toLowerCase() + '-';
+            }
+        }
+        return false;
+    })(document.createElement(PageSwitch));
 
     var PageSwitch = (function() {
         function PageSwitch(element, options) {
@@ -107,13 +120,71 @@
                 me.element.on("click", me.selector.page + ' li', function() {
                     me.index = $(this).index;
                     me._scrollPage();
-                })
+                });
+
+                /**绑定键盘 */
+                if (me.settings.keyboard) {
+                    $(window).keydown(function(e) {
+                        var keyCode = e.keyCode;
+                        if (keyCode == 37 || keyCode == 38) {
+                            me.prev();
+                        } else if (keyCode == 39 || keyCode == 40) {
+                            me.next();
+                        }
+                    });
+                }
+
+                /**绑定窗口改变事件 */
+                var resizeId;
+                $(window).resize(function() {
+                    clearTimeout(resizeId);
+                    resizeId = setTimeout(function() {
+                        var currentlength = me.switchLength();
+                        var offset = me.settings.direction ? 　me.section.eq(me.index).offset().top : me.section.eq(me.index).offset().left;
+                        if (Math.abs(offset) > currentLength / 2 && me.index < (me.pagesCount - 1)) {
+                            me.index++;
+                        }
+                        if (me.index) {
+                            me._scrollPage();
+                        }
+                    }, 500);
+                });
+
+                /**绑定transitionend事件，添加回调函数 */
+                if (_prefix) {
+                    me.sections.on("transitionend webkitTransitionEnd oTransitionEnd otransitionend", function() {
+                        me.canScroll = true;
+                        if (me.settings.callback && $.type(me.settings.callback) === "function") {
+                            me.settings.callback();
+                        }
+                    })
+                }
             },
 
-            _scrollPage: function() {
-
+            _scrollPage: function(init) {
+                var me = this;
+                var dest = me.section.eq(me.index).position();
+                if (!dest) return;
+                me.canScroll = false;
+                if (_prefix) {
+                    var transform = me.direction ? "translateY(-" + dest.top + "px)" : "translateX(-" + dest.left + "px)";
+                    me.sections.css(_prefix + "transition", "all" + me.settings.duration + "ms " + me.settings.easing);
+                    me.sections.css(_prefix + "transform", transform);
+                } else {
+                    var animateCss = me.direction ? { top: -dest.top } : { left: -dest.left };
+                    me.sections.animate(animateCss, me.settings.duration, function() {
+                        me.canScroll = true;
+                        if (me.settings.callback) {
+                            me.settings.callback();
+                        }
+                    });
+                }
+                if (me.settings.pagination && !init) {
+                    me.pageItem.eq(me.index).addClass(me.activeClass).siblings("li").removeClass(me.activeClass);
+                }
             }
-        }
+        };
+        return PageSwitch;
     })();
 
     $.fn.PageSwitch = function(options) {
