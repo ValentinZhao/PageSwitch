@@ -6,6 +6,7 @@
             this.element = element; //element同理
         }
 
+        //把公用方法封装在原型内
         PageSwitch.prototype = {
             init: function() {
                 var me = this; //用me来缓存PageSwitch的this
@@ -22,21 +23,60 @@
                 if (me.settings.pagination) {
                     me._initPaging();
                 }
+                me._initEvent();
             },
 
             pageCount: function() {
-
+                return this.section.length;
             },
 
-            _initLayout: function() {
+            /*获取滑动宽度/高度*/
+            switchLength: function() {
+                return this.direction === 1 ? this.element.height() : this.element.width(); //这个this.element其实就是整个容器
+            },
 
+            prev: function() {
+                var me = this;
+                if (me.index > 0) {
+                    me.index--;
+                } else if (me.settings.loop) {
+                    me.index = me.pageCount - 1;
+                }
+                me._scrollPage();
+            },
+
+            next: function() {
+                var me = this;
+                if (me.index < me.pageCount()) {
+                    me.index++;
+                } else if (me.settings.loop) {
+                    me.index = me.pageCount
+                }
+                me._scrollPage();
+            },
+
+            /**这里是处理横屏滑动时的情况 */
+            _initLayout: function() {
+                var me = this;
+                if (!me.direction) {
+                    var width = (me.pageCount * 100) + '%',
+                        cellWidth = (me.pageCount / 100).toFixed(2) + '%';
+                    me.sections.width(width);
+                    me.section.width(cellWidth).css("float", "left");
+                }
             },
 
             _initPaging: function() {
 
+            },
+
+            _initEvent: function() {
+
+            },
+
+            _scrollPage: function() {
+
             }
-
-
         }
     })();
 
