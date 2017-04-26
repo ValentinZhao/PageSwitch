@@ -1,13 +1,22 @@
-(function($) {
-    "use strict"
+/*!
+ * PageSwitch 1.0
+ *
+ */
 
+(function($) {
+    "use strict";
+
+    /*说明:获取浏览器前缀*/
+    /*实现：判断某个元素的css样式中是否存在transition属性*/
+    /*参数：dom元素*/
+    /*返回值：boolean，有则返回浏览器样式前缀，否则返回false*/
     var _prefix = (function(temp) {
-        var mPrefix = ["webkit", "Moz", "o", "ms"],
-            prop = "";
-        for (var i in mPrefix) { //for..in遍历键；for..of遍历value，类似Java中的for each
-            prop = mPrefix[i] + "Transition";
-            if (temp.style[prop] != undefined) {
-                return '-' + mPrefix[i].toLowerCase() + '-';
+        var aPrefix = ["webkit", "Moz", "o", "ms"],
+            props = "";
+        for (var i in aPrefix) {
+            props = aPrefix[i] + "Transition";
+            if (temp.style[props] !== undefined) {
+                return "-" + aPrefix[i].toLowerCase() + "-";
             }
         }
         return false;
@@ -15,65 +24,70 @@
 
     var PageSwitch = (function() {
         function PageSwitch(element, options) {
-            this.settings = $.extend(true, $.fn.PageSwitch.default, options || {}); //这里相当于给PageSwitch类一个新的属性，settings，并用extend方法多添加了一些参数进去，也就是settings自己也是一个类了，里面有default内容以及自定义的options
-            this.element = element; //element同理
+            this.settings = $.extend(true, $.fn.PageSwitch.defaults, options || {});
+            this.element = element;
+            this.init();
         }
 
-        //把公用方法封装在原型内
         PageSwitch.prototype = {
+            /*说明：初始化插件*/
+            /*实现：初始化dom结构，布局，分页及绑定事件*/
             init: function() {
-                var me = this; //用me来缓存PageSwitch的this
-                me.selector = me.settings.selector; //获得选择器
-                me.sections = me.element.find(me.selector.sections); //找到sections的DOM，也就是包裹若干滑动页面的容器
-                me.section = me.section.find(me.selector.section);
-                me.direction = me.settings.direction === "vertical" ? true : false;
-                me.pageCount = me.pageCount();
-                me.index = (me.settings.index > 0 && me.settings.index < me.pageCount) ? me.settings.index : 0;
-                me.canScroll = true; //现在才为PageSwitch添加的新属性，主要用来阻止画面切换动画播放时用户的其他动作，比如向下切换时用户向上滚动这时若canScroll为false则不会打断当前动画
+                var me = this;
+                me.selectors = me.settings.selectors;
+                me.sections = me.element.find(me.selectors.sections);
+                me.section = me.sections.find(me.selectors.section);
+
+                me.direction = me.settings.direction == "vertical" ? true : false;
+                me.pagesCount = me.pagesCount();
+                me.index = (me.settings.index >= 0 && me.settings.index < me.pagesCount) ? me.settings.index : 0;
+
+                me.canscroll = true;
+
                 if (!me.direction || me.index) {
                     me._initLayout();
                 }
+
                 if (me.settings.pagination) {
                     me._initPaging();
                 }
+
                 me._initEvent();
             },
-
-            pageCount: function() {
+            /*说明：获取滑动页面数量*/
+            pagesCount: function() {
                 return this.section.length;
             },
-
-            /*获取滑动宽度/高度*/
+            /*说明：获取滑动的宽度（横屏滑动）或高度（竖屏滑动）*/
             switchLength: function() {
-                return this.direction === 1 ? this.element.height() : this.element.width(); //这个this.element其实就是整个容器
+                return this.direction == 1 ? this.element.height() : this.element.width();
             },
-
-            prev: function() {
+            /*说明：向前滑动即上一页*/
+            prve: function() {
                 var me = this;
                 if (me.index > 0) {
                     me.index--;
                 } else if (me.settings.loop) {
-                    me.index = me.pageCount - 1;
+                    me.index = me.pagesCount - 1;
                 }
                 me._scrollPage();
             },
-
+            /*说明：向后滑动即下一页*/
             next: function() {
                 var me = this;
-                if (me.index < me.pageCount()) {
+                if (me.index < me.pagesCount) {
                     me.index++;
                 } else if (me.settings.loop) {
-                    me.index = me.pageCount
+                    me.index = 0;
                 }
                 me._scrollPage();
             },
-
-            /**这里是处理横屏滑动时的情况 */
+            /*说明：主要针对横屏情况进行页面布局*/
             _initLayout: function() {
                 var me = this;
                 if (!me.direction) {
-                    var width = (me.pageCount * 100) + '%',
-                        cellWidth = (me.pageCount / 100).toFixed(2) + '%';
+                    var width = (me.pagesCount * 100) + "%",
+                        cellWidth = (100 / me.pagesCount).toFixed(2) + "%";
                     me.sections.width(width);
                     me.section.width(cellWidth).css("float", "left");
                 }
@@ -81,66 +95,68 @@
                     me._scrollPage(true);
                 }
             },
-
+            /*说明：这是dot indicator的业务逻辑*/
             _initPaging: function() {
                 var me = this,
-                    pagesClass = me.selector.pagesClass.substring(1); //去掉选择器前面的点
-                me.activeClass = me.selector.activeClass.substring(1);
-                var pagesHtml = "<ul class=" + pagesClass + ">";
-                for (let i = 0; i < me.pageCount; i++) {
-                    pagesHtml += "<li></li>";
+                    pagesClass = me.selectors.page.substring(1); //原来的类名前面有一个dot（.），要把这个dot筛出去，故用substring
+                me.activeClass = me.selectors.active.substring(1);
+
+                var pageHtml = "<ul class=" + pagesClass + ">";
+                for (var i = 0; i < me.pagesCount; i++) {
+                    pageHtml += "<li></li>";
                 }
-                me.element.append(pagesHtml);
-                var pages = me.element.find(me.selector.page);
+                me.element.append(pageHtml);
+                var pages = me.element.find(me.selectors.page); //直接取me.selectors.page就是".pages"类选择器了，可以用于jQ的find()方法
                 me.pageItem = pages.find("li");
                 me.pageItem.eq(me.index).addClass(me.activeClass);
+
                 if (me.direction) {
                     pages.addClass("vertical");
                 } else {
                     pages.addClass("horizontal");
                 }
             },
-
+            /*说明：初始化插件事件*/
             _initEvent: function() {
-                /**绑定鼠标事件 */
                 var me = this;
+                /*绑定鼠标滚轮事件*/
                 me.element.on("mousewheel DOMMouseScroll", function(e) {
                     e.preventDefault(); //取消可以被取消的事件，这里是防止用户快速滚动鼠标滚轮造成页面快速切换————接收到一个滚轮事件后，我们总是要用户等待切换完成后才能再次切换
                     var delta = e.originalEvent.wheelDelta || -e.originalEvent.detail;
-                    if (me.canScroll) {
+                    if (me.canscroll) {
                         if (delta > 0 && (me.index && !me.settings.loop || me.settings.loop)) {
-                            me.prev();
-                        } else if (delta < 0 && (me.index < (me.pageCount - 1) && !me.settings.loop || me.settings.loop)) {
+                            me.prve();
+                        } else if (delta < 0 && (me.index < (me.pagesCount - 1) && !me.settings.loop || me.settings.loop)) {
                             me.next();
                         }
                     }
                 });
 
-                /**绑定indicator的点击事件 */
-                me.element.on("click", me.selector.page + ' li', function() {
-                    me.index = $(this).index;
+                /*绑定分页click事件*/
+                me.element.on("click", me.selectors.page + " li", function() {
+                    me.index = $(this).index();
                     me._scrollPage();
                 });
 
-                /**绑定键盘 */
                 if (me.settings.keyboard) {
                     $(window).keydown(function(e) {
                         var keyCode = e.keyCode;
                         if (keyCode == 37 || keyCode == 38) {
-                            me.prev();
+                            me.prve();
                         } else if (keyCode == 39 || keyCode == 40) {
                             me.next();
                         }
                     });
                 }
 
-                /**绑定窗口改变事件 */
+                /*绑定窗口改变事件*/
+                /*为了不频繁调用resize的回调方法，做了延迟*/
                 var resizeId;
                 $(window).resize(function() {
                     clearTimeout(resizeId);
                     resizeId = setTimeout(function() {
-                        var currentlength = me.switchLength();
-                        var offset = me.settings.direction ? 　me.section.eq(me.index).offset().top : me.section.eq(me.index).offset().left;
+                        var currentLength = me.switchLength();
+                        var offset = me.settings.direction ? me.section.eq(me.index).offset().top : me.section.eq(me.index).offset().left;
                         if (Math.abs(offset) > currentLength / 2 && me.index < (me.pagesCount - 1)) {
                             me.index++;
                         }
@@ -150,30 +166,31 @@
                     }, 500);
                 });
 
-                /**绑定transitionend事件，添加回调函数 */
+                /*支持CSS3动画的浏览器，绑定transitionend事件(即在动画结束后调用起回调函数)*/
                 if (_prefix) {
                     me.sections.on("transitionend webkitTransitionEnd oTransitionEnd otransitionend", function() {
-                        me.canScroll = true;
+                        me.canscroll = true;
                         if (me.settings.callback && $.type(me.settings.callback) === "function") {
                             me.settings.callback();
                         }
                     })
                 }
             },
-
+            /*滑动动画*/
             _scrollPage: function(init) {
                 var me = this;
                 var dest = me.section.eq(me.index).position();
                 if (!dest) return;
-                me.canScroll = false;
+
+                me.canscroll = false;
                 if (_prefix) {
-                    var transform = me.direction ? "translateY(-" + dest.top + "px)" : "translateX(-" + dest.left + "px)";
-                    me.sections.css(_prefix + "transition", "all" + me.settings.duration + "ms " + me.settings.easing);
-                    me.sections.css(_prefix + "transform", transform);
+                    var translate = me.direction ? "translateY(-" + dest.top + "px)" : "translateX(-" + dest.left + "px)";
+                    me.sections.css(_prefix + "transition", "all " + me.settings.duration + "ms " + me.settings.easing);
+                    me.sections.css(_prefix + "transform", translate);
                 } else {
                     var animateCss = me.direction ? { top: -dest.top } : { left: -dest.left };
                     me.sections.animate(animateCss, me.settings.duration, function() {
-                        me.canScroll = true;
+                        me.canscroll = true;
                         if (me.settings.callback) {
                             me.settings.callback();
                         }
@@ -191,33 +208,33 @@
         return this.each(function() {
             var me = $(this),
                 instance = me.data("PageSwitch");
+
             if (!instance) {
-                me.data("PageSwitch", (PageSwitch = new PageSwitch(me, options))); //在方法外部可以通过配置字符串来实现自定义功能
+                me.data("PageSwitch", (instance = new PageSwitch(me, options)));
             }
-            if ($.type(options) === "string") {
-                return instance[options]();
-            }
+
+            if ($.type(options) === "string") return instance[options](); //在方法外部可以通过配置字符串来实现自定义功能
         });
     };
 
-    $.fn.PageSwitch.default = {
-        selector: { //选择器类，通过选择器利用jQ获得真正的DOM结构
+    $.fn.PageSwitch.defaults = {
+        selectors: {
             sections: ".sections",
             section: ".section",
             page: ".pages",
-            active: ".active"
+            active: ".active",
         },
-        index: 0,
-        easing: 　 "ease",
-        duration: 500,
-        loop: false,
-        pagination: true,
-        keyboard: true,
-        direction: "vertical",
-        callback: ""
+        index: 0, //页面开始的索引
+        easing: "ease", //动画效果
+        duration: 500, //动画执行时间
+        loop: false, //是否循环切换
+        pagination: true, //是否进行分页
+        keyboard: true, //是否触发键盘事件
+        direction: "vertical", //滑动方向vertical,horizontal
+        callback: "" //回调函数
     };
 
     $(function() {
         $('[data-PageSwitch]').PageSwitch();
-    }); //加上这行代码后，我们只需要在html中配置设置，不需要手动触发
+    });
 })(jQuery);
