@@ -28,7 +28,7 @@
                 me.section = me.section.find(me.selector.section);
                 me.direction = me.settings.direction === "vertical" ? true : false;
                 me.pageCount = me.pageCount();
-                me.index = (me.settings.index > 0 && me.settings.index < me.pageCount) ? me.settings.index : 0;
+                me.index = (me.settings.index >= 0 && me.settings.index < me.pageCount) ? me.settings.index : 0;
                 me.canScroll = true; //现在才为PageSwitch添加的新属性，主要用来阻止画面切换动画播放时用户的其他动作，比如向下切换时用户向上滚动这时若canScroll为false则不会打断当前动画
                 if (!me.direction || me.index) {
                     me._initLayout();
@@ -60,10 +60,10 @@
 
             next: function() {
                 var me = this;
-                if (me.index < me.pageCount()) {
+                if (me.index < me.pageCount) {
                     me.index++;
                 } else if (me.settings.loop) {
-                    me.index = me.pageCount
+                    me.index = 0;
                 }
                 me._scrollPage();
             },
@@ -73,7 +73,7 @@
                 var me = this;
                 if (!me.direction) {
                     var width = (me.pageCount * 100) + '%',
-                        cellWidth = (me.pageCount / 100).toFixed(2) + '%';
+                        cellWidth = (100 / me.pageCount).toFixed(2) + '%';
                     me.sections.width(width);
                     me.section.width(cellWidth).css("float", "left");
                 }
@@ -84,14 +84,14 @@
 
             _initPaging: function() {
                 var me = this,
-                    pagesClass = me.selector.pagesClass.substring(1); //去掉选择器前面的点
+                    pagesClass = me.selector.page.substring(1); //去掉选择器前面的点
                 me.activeClass = me.selector.activeClass.substring(1);
                 var pagesHtml = "<ul class=" + pagesClass + ">";
-                for (let i = 0; i < me.pageCount; i++) {
+                for (var i = 0; i < me.pageCount; i++) {
                     pagesHtml += "<li></li>";
                 }
                 me.element.append(pagesHtml);
-                var pages = me.element.find(me.selector.page);
+                var pages = me.element.find(me.selector.page); //直接取me.selectors.page就是".pages"类选择器了，可以用于jQ的find()方法
                 me.pageItem = pages.find("li");
                 me.pageItem.eq(me.index).addClass(me.activeClass);
                 if (me.direction) {
@@ -141,7 +141,7 @@
                     resizeId = setTimeout(function() {
                         var currentlength = me.switchLength();
                         var offset = me.settings.direction ? 　me.section.eq(me.index).offset().top : me.section.eq(me.index).offset().left;
-                        if (Math.abs(offset) > currentLength / 2 && me.index < (me.pagesCount - 1)) {
+                        if (Math.abs(offset) > currentLength / 2 && me.index < (me.pageCount - 1)) {
                             me.index++;
                         }
                         if (me.index) {
@@ -208,7 +208,7 @@
             active: ".active"
         },
         index: 0,
-        easing: 　 "ease",
+        easing: "ease",
         duration: 500,
         loop: false,
         pagination: true,
